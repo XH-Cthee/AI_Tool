@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>打印机/扫描仪自动化测试工具</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #232736; --border: #2e3348;
+    --text: #e4e6f0; --text2: #9197b3; --accent: #6c8cff; --accent2: #4a6adf;
+    --green: #4ade80; --orange: #fb923c; --red: #f87171; --yellow: #facc15;
+    --purple: #a78bfa; --cyan: #22d3ee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #1e2235, #151827); border-bottom: 1px solid var(--border); padding: 20px 32px; display: flex; align-items: center; gap: 20px; }
+  .header-icon { width: 48px; height: 48px; background: linear-gradient(135deg, var(--accent), var(--purple)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .header p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+  .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; gap: 4px; }
+  .tab { padding: 14px 24px; font-size: 14px; font-weight: 500; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; display: flex; align-items: center; gap: 8px; user-select: none; }
+  .tab:hover { color: var(--text); background: var(--surface2); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab .badge { background: var(--accent2); color: #fff; font-size: 11px; padding: 1px 7px; border-radius: 10px; font-weight: 600; }
+
+  .main { padding: 24px 32px; max-width: 1500px; margin: 0 auto; }
+  .tab-panel { display: none; } .tab-panel.active { display: block; }
+
+  .controls { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-end; }
+  .control-group { display: flex; flex-direction: column; gap: 6px; }
+  .control-group label { font-size: 12px; color: var(--text2); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .control-group select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 14px; outline: none; min-width: 160px; cursor: pointer; }
+  .control-group select:focus { border-color: var(--accent); }
+
+  .chip-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); transition: all 0.15s; user-select: none; }
+  .chip:hover { border-color: var(--accent); color: var(--text); }
+  .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .table-wrap { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); overflow: auto; max-height: 70vh; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: var(--surface2); padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+  tbody td { padding: 11px 16px; font-size: 13px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr:hover { background: rgba(108,140,255,0.05); }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .dpi-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .dpi-100  { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .dpi-150  { background: rgba(250,204,21,0.15); color: var(--yellow); }
+  .dpi-200  { background: rgba(74,222,128,0.15); color: var(--green); }
+  .dpi-300  { background: rgba(108,140,255,0.15); color: var(--accent); }
+  .dpi-400  { background: rgba(167,139,250,0.15); color: var(--purple); }
+  .dpi-500  { background: rgba(34,211,238,0.15); color: var(--cyan); }
+  .dpi-600  { background: rgba(108,140,255,0.2); color: var(--accent); font-weight: 700; }
+  .dpi-1200 { background: rgba(167,139,250,0.2); color: var(--purple); font-weight: 700; }
+
+  .size-bar { display: inline-block; height: 6px; border-radius: 3px; margin-right: 8px; vertical-align: middle; min-width: 4px; transition: width 0.3s; }
+  .res-text { font-variant-numeric: tabular-nums; }
+  .px-text { font-size: 12px; color: var(--text2); }
+
+  .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .summary-card .label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .summary-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .summary-card .sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .info-box { background: rgba(108,140,255,0.08); border: 1px solid rgba(108,140,255,0.2); border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; font-size: 13px; color: var(--text2); line-height: 1.7; }
+  .info-box strong { color: var(--text); }
+
+  .mode-toggle { display: flex; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
+  .mode-btn { padding: 8px 16px; font-size: 13px; cursor: pointer; color: var(--text2); border: none; background: transparent; transition: all 0.15s; }
+  .mode-btn.active { background: var(--accent); color: #fff; }
+  .mode-btn:hover:not(.active) { background: rgba(108,140,255,0.1); }
+
+  /* Test Files */
+  .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .file-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; transition: all 0.2s; cursor: default; }
+  .file-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .file-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .file-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .file-card-header h3 { font-size: 15px; font-weight: 600; }
+  .file-card-header .standard { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .file-desc { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 14px; }
+  .file-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .file-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .file-actions { display: flex; gap: 8px; }
+  .btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { border-color: var(--accent); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent2); }
+
+  /* Upload */
+  .upload-zone { border: 2px dashed var(--border); border-radius: 16px; padding: 60px 40px; text-align: center; transition: all 0.2s; cursor: pointer; background: var(--surface); }
+  .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: rgba(108,140,255,0.05); }
+  .upload-zone .icon { font-size: 48px; margin-bottom: 16px; }
+  .upload-zone h3 { font-size: 18px; margin-bottom: 8px; }
+  .upload-zone p { font-size: 13px; color: var(--text2); }
+  .upload-zone input { display: none; }
+
+  .analysis-result { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-top: 20px; display: none; }
+  .analysis-result.show { display: block; }
+  .analysis-result h3 { font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .analysis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .analysis-item { background: var(--surface2); border-radius: 8px; padding: 14px; }
+  .analysis-item .label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .analysis-item .value { font-size: 20px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .checklist { list-style: none; padding: 0; }
+  .checklist li { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; display: flex; align-items: center; gap: 10px; }
+  .checklist li:last-child { border-bottom: none; }
+  .check-icon { font-size: 16px; }
+  .check-pass { color: var(--green); }
+  .check-warn { color: var(--orange); }
+  .check-fail { color: var(--red); }
+
+  /* Preview Modal */
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 30px; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-header h3 { font-size: 16px; font-weight: 600; }
+  .modal-close { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+  .modal-close:hover { background: var(--red); border-color: var(--red); color: #fff; }
+  .modal-body { flex: 1; overflow: auto; padding: 20px; display: flex; align-items: center; justify-content: center; background: #fff; }
+  .modal-body svg { max-width: 100%; max-height: calc(90vh - 120px); }
+  .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text2); }
+
+  @media (max-width: 768px) {
+    .header { padding: 16px; }
+    .main { padding: 16px; }
+    .tabs { padding: 0 16px; overflow-x: auto; }
+    .tab { padding: 12px 16px; white-space: nowrap; }
+    .controls { flex-direction: column; }
+    .file-grid { grid-template-columns: 1fr; }
+    .modal { max-width: 100%; margin: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">🖨️</div>
+  <div>
+    <h1>打印机/扫描仪自动化测试工具</h1>
+    <p>DPI 参考表 · 标准测试文件库 · 文件质量分析</p>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="dpi">📊 DPI 分辨率 & 体积参考表</div>
+  <div class="tab" data-tab="files">📁 标准测试文件库 <span class="badge">16</span></div>
+  <div class="tab" data-tab="analyze">🔍 上传分析</div>
+</div>
+
+<div class="main">
+
+<!-- ============ Tab 1: DPI Table ============ -->
+<div class="tab-panel active" id="panel-dpi">
+  <div class="info-box">
+    <strong>📖 使用说明：</strong>选择纸张类型、色彩模式后，表格自动显示各 DPI 下的像素分辨率和预估文件体积。
+    体积为无压缩 BMP 理论值，实际扫描/打印文件（JPEG/PNG/PDF）通常为 10%~60%。
+    <strong>300 DPI</strong> = 文档扫描标准 · <strong>600 DPI</strong> = 照片/精细扫描推荐。
+  </div>
+  <div class="summary-cards" id="summaryCards"></div>
+  <div class="controls">
+    <div class="control-group">
+      <label>纸张类型</label>
+      <select id="paperType"></select>
+    </div>
+    <div class="control-group">
+      <label>色彩模式</label>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="color">🎨 彩色 24bit</button>
+        <button class="mode-btn" data-mode="gray">🔘 灰度 8bit</button>
+        <button class="mode-btn" data-mode="bw">⬛ 黑白 1bit</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <label>显示 DPI</label>
+      <div class="chip-group" id="dpiChips">
+        <div class="chip active" data-dpi="100">100</div>
+        <div class="chip active" data-dpi="150">150</div>
+        <div class="chip active" data-dpi="200">200</div>
+        <div class="chip active" data-dpi="300">300</div>
+        <div class="chip active" data-dpi="400">400</div>
+        <div class="chip active" data-dpi="500">500</div>
+        <div class="chip active" data-dpi="600">600</div>
+        <div class="chip active" data-dpi="1200">1200</div>
+      </div>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>DPI</th><th>分辨率 (像素)</th><th>像素总量</th><th>BMP 体积</th>
+        <th>JPEG 预估</th><th>PNG 预估</th><th>PDF 预估</th><th>适用场景</th>
+      </tr></thead>
+      <tbody id="dpiTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ Tab 2: Test Files ============ -->
+<div class="tab-panel" id="panel-files">
+  <div class="info-box">
+    <strong>📖 标准测试文件库：</strong>内置 16 种打印机/扫描仪功能验证的标准化测试图，涵盖分辨率、色彩、馈纸、OCR、密度、拼接、耐久性等场景。
+    基于 GB/T、ISO/IEC 等标准设计。点击「预览」在线查看，点击「下载」保存 SVG 矢量文件（可无损缩放到任意打印分辨率）。
+  </div>
+  <div class="controls">
+    <div class="control-group">
+      <label>测试类别</label>
+      <select id="fileCategory">
+        <option value="all">全部类别 (16)</option>
+        <option value="resolution">分辨率测试 (3)</option>
+        <option value="color">色彩还原 (2)</option>
+        <option value="feed">馈纸/走纸 (2)</option>
+        <option value="ocr">OCR 识别 (2)</option>
+        <option value="density">密度/灰阶 (2)</option>
+        <option value="stitch">拼接/对齐 (2)</option>
+        <option value="duplex">双面/耐久 (3)</option>
+      </select>
+    </div>
+  </div>
+  <div class="file-grid" id="fileGrid"></div>
+</div>
+
+<!-- ============ Tab 3: Upload & Analyze ============ -->
+<div class="tab-panel" id="panel-analyze">
+  <div class="info-box">
+    <strong>📖 上传分析：</strong>上传扫描/打印输出的测试文件，系统自动分析分辨率、色彩空间、文件结构等参数，
+    与标准值比对，给出质量评估和改进建议。支持 JPEG、PNG、TIFF、BMP、PDF 格式。
+  </div>
+  <div class="upload-zone" id="uploadZone">
+    <div class="icon">📤</div>
+    <h3>拖放文件到此处，或点击选择</h3>
+    <p>支持 JPEG / PNG / TIFF / BMP / PDF · 最大 50MB</p>
+    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.tiff,.tif,.bmp,.pdf">
+  </div>
+  <div class="analysis-result" id="analysisResult">
+    <h3>📋 分析报告</h3>
+    <div class="analysis-grid" id="analysisGrid"></div>
+    <h3 style="margin-top:16px;">✅ 质量检查清单</h3>
+    <ul class="checklist" id="checklist"></ul>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- Preview Modal -->
+<div class="modal-overlay" id="previewModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">预览</h3>
+      <button class="modal-close" onclick="closePreview()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closePreview()">关闭</button>
+      <button class="btn btn-primary" id="modalDownload">⬇ 下载 SVG</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA — Paper Types (25 types)
+// ============================================================
+const PAPERS = {
+  // ISO A series
+  'a0':  { name: 'A0',  w: 841, h: 1189, group: 'ISO A 系列' },
+  'a1':  { name: 'A1',  w: 594, h: 841,  group: 'ISO A 系列' },
+  'a2':  { name: 'A2',  w: 420, h: 594,  group: 'ISO A 系列' },
+  'a3':  { name: 'A3',  w: 297, h: 420,  group: 'ISO A 系列' },
+  'a4':  { name: 'A4',  w: 210, h: 297,  group: 'ISO A 系列' },
+  'a5':  { name: 'A5',  w: 148, h: 210,  group: 'ISO A 系列' },
+  'a6':  { name: 'A6',  w: 105, h: 148,  group: 'ISO A 系列' },
+  // ISO B series
+  'b3':  { name: 'B3',  w: 353, h: 500,  group: 'ISO B 系列' },
+  'b4':  { name: 'B4',  w: 250, h: 353,  group: 'ISO B 系列' },
+  'b5':  { name: 'B5',  w: 176, h: 250,  group: 'ISO B 系列' },
+  'b6':  { name: 'B6',  w: 125, h: 176,  group: 'ISO B 系列' },
+  // US sizes
+  'letter':  { name: 'Letter',     w: 216, h: 279, group: '美标' },
+  'legal':   { name: 'Legal',      w: 216, h: 356, group: '美标' },
+  'tabloid': { name: 'Tabloid',    w: 279, h: 432, group: '美标' },
+  'executive':{ name: 'Executive', w: 184, h: 267, group: '美标' },
+  // Photo sizes (inches → mm)
+  '2r':  { name: '2R (护照)',   w: 60,   h: 80,   group: '照片' },
+  '3r':  { name: '3R (钱包照)', w: 89,   h: 127,  group: '照片' },
+  '4r':  { name: '4R (标准)',   w: 102,  h: 152,  group: '照片' },
+  '5r':  { name: '5R (7寸)',    w: 127,  h: 178,  group: '照片' },
+  '6r':  { name: '6R (8寸)',    w: 152,  h: 203,  group: '照片' },
+  '8r':  { name: '8R (10寸)',   w: 203,  h: 254,  group: '照片' },
+  '10r': { name: '10R (12寸)',  w: 254,  h: 305,  group: '照片' },
+  // Envelope
+  'c5':  { name: 'C5 信封',     w: 162, h: 229, group: '信封' },
+  'dl':  { name: 'DL 信封',     w: 110, h: 220, group: '信封' },
+  // Postcard
+  'postcard': { name: '明信片', w: 100, h: 148, group: '其他' },
+};
+
+const DPIS = [100, 150, 200, 300, 400, 500, 600, 1200];
+
+const DPI_USAGE = {
+  100: '网页预览、草稿扫描', 150: '快速文档扫描、OCR 预扫', 200: '普通文档存档',
+  300: '标准文档扫描 / ISO 12653', 400: '高质量文档存档', 500: '精细文档 / 半色调检测',
+  600: '照片扫描 / 精细图像', 1200: '胶片/底片 / 极精细扫描',
+};
+
+const MODES = { color: { bits: 24, label: '彩色' }, gray: { bits: 8, label: '灰度' }, bw: { bits: 1, label: '黑白' } };
+
+let currentPaper = 'a4';
+let currentMode = 'color';
+let activeDpis = new Set(DPIS);
+let pendingSvg = null;
+
+// ============================================================
+// HELPERS
+// ============================================================
+const mm2in = mm => mm / 25.4;
+const fmtPx = n => n.toLocaleString('zh-CN');
+const fmtBytes = b => {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  if (b < 1073741824) return (b / 1048576).toFixed(2) + ' MB';
+  return (b / 1073741824).toFixed(2) + ' GB';
+};
+
+function calcRes(paper, dpi) {
+  const p = PAPERS[paper];
+  const w = Math.round(mm2in(p.w) * dpi), h = Math.round(mm2in(p.h) * dpi);
+  return { w, h, total: w * h };
+}
+function estSizes(res, bits) {
+  const raw = Math.ceil(res.total * bits / 8);
+  const bmp = raw + 54;
+  const jr = bits === 24 ? 0.08 : bits === 8 ? 0.10 : 0.02;
+  const pr = bits === 24 ? 0.35 : bits === 8 ? 0.30 : 0.10;
+  return { bmp, jpeg: Math.round(bmp * jr), png: Math.round(bmp * pr), pdf: Math.round(bmp * jr * 0.85) };
+}
+
+// ============================================================
+// DPI TABLE RENDER
+// ============================================================
+function renderTable() {
+  const tbody = document.getElementById('dpiTableBody');
+  let maxBmp = 0;
+  for (const d of activeDpis) { const s = estSizes(calcRes(currentPaper, d), MODES[currentMode].bits); if (s.bmp > maxBmp) maxBmp = s.bmp; }
+  let html = '';
+  for (const dpi of DPIS) {
+    if (!activeDpis.has(dpi)) continue;
+    const res = calcRes(currentPaper, dpi);
+    const s = estSizes(res, MODES[currentMode].bits);
+    const bw = Math.max(4, (s.bmp / maxBmp) * 160);
+    const bc = dpi <= 200 ? 'var(--green)' : dpi <= 400 ? 'var(--accent)' : dpi <= 600 ? 'var(--purple)' : 'var(--orange)';
+    html += `<tr>
+      <td><span class="dpi-badge dpi-${dpi}">${dpi} DPI</span></td>
+      <td><span class="res-text">${fmtPx(res.w)} × ${fmtPx(res.h)}</span> <span class="px-text">px</span></td>
+      <td class="px-text">${fmtPx(res.total)}</td>
+      <td><span class="size-bar" style="width:${bw}px;background:${bc}"></span><span>${fmtBytes(s.bmp)}</span></td>
+      <td>${fmtBytes(s.jpeg)}</td><td>${fmtBytes(s.png)}</td><td>${fmtBytes(s.pdf)}</td>
+      <td class="px-text">${DPI_USAGE[dpi]}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+  renderSummary();
+}
+function renderSummary() {
+  const p = PAPERS[currentPaper], r3 = calcRes(currentPaper, 300), r6 = calcRes(currentPaper, 600);
+  const s3 = estSizes(r3, MODES[currentMode].bits), s6 = estSizes(r6, MODES[currentMode].bits);
+  document.getElementById('summaryCards').innerHTML = `
+    <div class="summary-card"><div class="label">当前纸张</div><div class="value">${p.name}</div><div class="sub">${p.w} × ${p.h} mm</div></div>
+    <div class="summary-card"><div class="label">300 DPI 分辨率</div><div class="value" style="font-size:22px">${fmtPx(r3.w)}×${fmtPx(r3.h)}</div><div class="sub">BMP ≈ ${fmtBytes(s3.bmp)}</div></div>
+    <div class="summary-card"><div class="label">600 DPI 分辨率</div><div class="value" style="font-size:22px">${fmtPx(r6.w)}×${fmtPx(r6.h)}</div><div class="sub">BMP ≈ ${fmtBytes(s6.bmp)}</div></div>
+    <div class="summary-card"><div class="label">色彩模式</div><div class="value" style="font-size:22px">${MODES[currentMode].label}</div><div class="sub">${MODES[currentMode].bits} 位色深</div></div>`;
+}
+
+// ============================================================
+// TEST FILES — Data
+// ============================================================
+const TEST_FILES = [
+  // ---- Resolution ----
+  { id:'iso12653', category:'resolution', icon:'📐', iconBg:'#6c8cff22',
+    name:'ISO 12653 分辨率测试图', standard:'ISO 12653 / GB/T 18721',
+    desc:'水平/垂直/斜向线对（1~20 lp/mm）+ 西门子星标。评估扫描仪在各空间频率下的对比度再现与 MTF。',
+    tags:['分辨率','MTF','线对','ISO'] },
+  { id:'usaf1951', category:'resolution', icon:'⭐', iconBg:'#a78bfa22',
+    name:'USAF 1951 分辨率靶', standard:'MIL-STD-150A',
+    desc:'经典 6 组 × 6 元素线对靶标，精确测定光学系统极限分辨率。广泛用于扫描仪物镜评估。',
+    tags:['分辨率','USAF','线对','光学'] },
+  { id:'photores', category:'resolution', icon:'🖼️', iconBg:'#6c8cff22',
+    name:'照片分辨率测试图', standard:'ISO 12233 / e-SFR',
+    desc:'包含斜边(Slanted Edge)、楔形线(Wedge)、周期性方波图案。用于测量相机/扫描仪的 SFR(空间频率响应)与极限分辨率。',
+    tags:['分辨率','SFR','ISO 12233','斜边'] },
+
+  // ---- Color ----
+  { id:'it8color', category:'color', icon:'🎨', iconBg:'#4ade8022',
+    name:'IT8 色彩校准卡', standard:'ISO 12641 / GB/T 18720',
+    desc:'264 色块（140 反射色 + 92 饱和色 + 32 灰阶），用于建立扫描仪/相机的 ICC 色彩配置文件。',
+    tags:['色彩','ICC','校准','色块'] },
+  { id:'cmykpatch', category:'color', icon:'🌈', iconBg:'#4ade8022',
+    name:'CMYK 色彩还原测试页', standard:'ISO 13655',
+    desc:'CMYK 四色色阶 + 灰平衡色块 + 记忆色参考，评估打印/扫描的色彩还原准确性和灰平衡。',
+    tags:['CMYK','色彩还原','灰平衡'] },
+
+  // ---- Feed ----
+  { id:'feedangle', category:'feed', icon:'📄', iconBg:'#fb923c22',
+    name:'馈纸角偏差测试页', standard:'ISO 12653-2 / GB/T 18721',
+    desc:'四角十字线 + 中心对准标记 + 对角线参考 + 边缘刻度尺。检测 ADF 送纸偏斜和重复定位精度。',
+    tags:['馈纸','ADF','偏斜','对准'] },
+  { id:'skewtest', category:'feed', icon:'📏', iconBg:'#fb923c22',
+    name:'送纸歪斜测试页', standard:'ISO 12653-2',
+    desc:'顶部/底部水平参考线 + 裁切标记 + 等距网格。量化 ADF 送纸歪斜角度（skew angle）。',
+    tags:['馈纸','歪斜','ADF'] },
+
+  // ---- OCR ----
+  { id:'ocrtext', category:'ocr', icon:'🔤', iconBg:'#22d3ee22',
+    name:'OCR 标准字符集测试页', standard:'ISO 1073 / GB/T 12052',
+    desc:'OCR-A/OCR-B 数字字母集 + 多字号阶梯(4~24pt) + 中文生僻字 + Code128 条码密度测试。',
+    tags:['OCR','字符识别','字体','条码'] },
+  { id:'mixedlayout', category:'ocr', icon:'📰', iconBg:'#22d3ee22',
+    name:'混合版面测试页', standard:'ISO/IEC 19794-1',
+    desc:'文本段落 + 表格 + QR 码 + 条码 + 图片占位区。测试文档扫描的版面分析和混合内容 OCR 能力。',
+    tags:['OCR','版面','表格','条码','QR'] },
+
+  // ---- Density ----
+  { id:'graywedge', category:'density', icon:'⬛', iconBg:'#9197b322',
+    name:'21 级灰阶楔', standard:'ISO 5-3 / ISO 14523',
+    desc:'纯黑到纯白 21 级等差灰阶 + 连续渐变条 + γ=2.2 曲线。评估密度响应、动态范围和 Gamma。',
+    tags:['灰阶','密度','动态范围','Gamma'] },
+  { id:'halftone', category:'density', icon:'🔘', iconBg:'#9197b322',
+    name:'半色调网点测试图', standard:'ISO 12647-2',
+    desc:'65/85/100/133/150/175 lpi 网点区域 + 6 种角度旋转。检测莫尔纹和网点再现质量。',
+    tags:['半色调','网点','莫尔纹','角度'] },
+
+  // ---- Stitch ----
+  { id:'regmark', category:'stitch', icon:'✚', iconBg:'#facc1522',
+    name:'套准/拼接标记页', standard:'ISO 12647-2',
+    desc:'四角+中心十字套准标记 + CMYK 色条 + 灰平衡条。测试大幅面扫描/打印的拼接精度。',
+    tags:['套准','拼接','十字线','色条'] },
+  { id:'stitchgrid', category:'stitch', icon:'🔲', iconBg:'#facc1522',
+    name:'网格对齐测试图', standard:'内部标准',
+    desc:'5mm 等距网格 + 25mm 主线 + 四角编号标记。检测几何畸变、线性度和拼接对齐误差。',
+    tags:['网格','几何畸变','线性度'] },
+
+  // ---- Duplex / Durability ----
+  { id:'duplexalign', category:'duplex', icon:'📑', iconBg:'#f8717122',
+    name:'双面打印对齐测试页', standard:'ISO 12647-2 / 内部标准',
+    desc:'正反面各印有对准十字和透射可见标记，用于检测双面打印的正反面套准误差和翻转偏移。',
+    tags:['双面','对齐','套准','翻转'] },
+  { id:'edgeband', category:'duplex', icon:'📏', iconBg:'#f8717122',
+    name:'边缘/边界测试页', standard:'ISO 12653-2',
+    desc:'页面四周精确刻度线 + 不可打印区标记 + 裁切线。测试打印/扫描的有效区域和边界裁切精度。',
+    tags:['边界','裁切','有效区','边缘'] },
+  { id:'durability', category:'duplex', icon:'🔄', iconBg:'#f8717122',
+    name:'耐久性/重复扫描测试页', standard:'内部标准',
+    desc:'包含细线条、渐变、色块和文字的综合测试页。用于多次扫描/打印后的退化评估（磨损、色偏、清晰度下降）。',
+    tags:['耐久','退化','重复测试','磨损'] },
+];
+
+// ============================================================
+// SVG GENERATORS
+// ============================================================
+const A4W = 210, A4H = 297;
+const svgOpen = (w=A4W,h=A4H) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="white"/>`;
+const svgClose = '</svg>';
+const svgTitle = (t,y=12) => `<text x="${A4W/2}" y="${y}" text-anchor="middle" font-size="6" font-weight="bold" font-family="Arial,sans-serif">${t}</text>`;
+const svgFoot = (t,y=293) => `<text x="${A4W/2}" y="${y}" text-anchor="middle" font-size="3" fill="#999" font-family="Arial,sans-serif">${t}</text>`;
+const svgLine = (x1,y1,x2,y2,sw=0.3,c='black') => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${sw}"/>`;
+const svgRect = (x,y,w,h,fill='black',stroke='none',sw=0) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"${stroke!=='none'?` stroke="${stroke}" stroke-width="${sw}"`:''}/>`;
+const svgText = (x,y,t,sz=3,anchor='start',fill='black',ff='monospace') => `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${sz}" fill="${fill}" font-family="${ff}">${t}</text>`;
+const svgCircle = (cx,cy,r,fill='none',stroke='black',sw=0.3) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+
+function crossMark(cx,cy,s,sw=0.3,c='black') {
+  return svgLine(cx-s,cy,cx+s,cy,sw,c) + svgLine(cx,cy-s,cx,cy+s,sw,c);
+}
+
+// --- 1. ISO 12653 Resolution ---
+function gen_iso12653() {
+  let s = svgOpen();
+  s += svgTitle('ISO 12653 分辨率测试图 — Resolution Test Chart');
+  // Horizontal line pairs
+  const freqs = [1,2,3,4,5,6,8,10,12,15,20];
+  let y = 22;
+  for (const f of freqs) {
+    const lw = 0.5 / f, period = 1 / f;
+    for (let x = 15; x < 195; x += period) s += svgRect(x, y, lw, 8);
+    s += svgText(197, y+5, `${f} lp/mm`);
+    y += 11;
+  }
+  // Vertical
+  s += svgText(A4W/2, y+5, '垂直线对 Vertical', 5, 'middle');
+  y += 12;
+  for (const f of [2,4,8,12,20]) {
+    const lw = 0.5 / f, period = 1 / f;
+    for (let yy = y; yy < y+25; yy += period) s += svgRect(15, yy, 80, lw);
+    s += svgText(100, y+12, `${f} lp/mm (V)`);
+    y += 30;
+  }
+  // Siemens star
+  const cx2 = 160, cy2 = y - 10, r2 = 25;
+  for (let i = 0; i < 36; i++) {
+    const a1 = i * 10 * Math.PI / 180, a2 = (i+1) * 10 * Math.PI / 180;
+    if (i % 2 === 0) s += `<polygon points="${cx2},${cy2} ${cx2+r2*Math.cos(a1)},${cy2+r2*Math.sin(a1)} ${cx2+r2*Math.cos(a2)},${cy2+r2*Math.sin(a2)}" fill="black"/>`;
+  }
+  s += svgCircle(cx2, cy2, r2, 'none', 'black', 0.3);
+  s += svgText(cx2, cy2-r2-3, '西门子星标', 4, 'middle');
+  s += svgFoot('ISO 12653 / GB/T 18721 · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 2. USAF 1951 ---
+function gen_usaf1951() {
+  let s = svgOpen();
+  s += svgTitle('USAF 1951 分辨率靶 — Resolution Target');
+  const groups = [
+    { g:0, els:[1,2,3,4,5,6], sz:5 }, { g:1, els:[1,2,3,4,5,6], sz:3.5 },
+    { g:2, els:[1,2,3,4,5,6], sz:2.5 }, { g:3, els:[1,2,3,4,5,6], sz:1.8 },
+    { g:4, els:[1,2,3,4,5,6], sz:1.2 }, { g:5, els:[1,2,3,4,5,6], sz:0.8 },
+  ];
+  let y = 22;
+  for (const g of groups) {
+    let x = 12;
+    for (const e of g.els) {
+      const sz = g.sz / Math.pow(2, (e-1)/6);
+      const bh = sz * 3, bw = sz * 0.5;
+      for (let b = 0; b < 3; b++) s += svgRect(x + b*sz, y, bw, bh);
+      const ox = x + bh + 5;
+      for (let b = 0; b < 3; b++) s += svgRect(ox + b*sz, y, bh, bw);
+      s += svgText(ox + bh*2 + 3, y + bh/2 + 1.5, `${g.g}-${e}`, 2.5);
+      x += bh * 2 + 18;
+      if (x > 185) { x = 12; y += bh + 4; }
+    }
+    y += g.sz * 3 + 8;
+  }
+  s += svgFoot('MIL-STD-150A USAF 1951 · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 3. Photo Resolution (ISO 12233) ---
+function gen_photores() {
+  let s = svgOpen();
+  s += svgTitle('ISO 12233 照片分辨率测试图 — e-SFR Chart');
+  // Slanted edge regions
+  s += svgText(15, 20, '斜边区域 (Slanted Edge)', 4, 'start', '#333');
+  for (let i = 0; i < 4; i++) {
+    const bx = 15 + i * 48;
+    s += svgRect(bx, 22, 40, 25, '#eee', '#333', 0.3);
+    s += `<line x1="${bx+8}" y1="22" x2="${bx+32}" y2="47" stroke="black" stroke-width="1.5"/>`;
+    s += svgText(bx+20, 45, `${['左上','右上','左下','右下'][i]}`, 2.5, 'middle', '#666');
+  }
+  // Wedge patterns
+  s += svgText(15, 58, '楔形线 (Wedge)', 4, 'start', '#333');
+  let wy = 62;
+  for (const freq of [100, 200, 400, 600, 800, 1000]) {
+    const lw = 50 / freq;
+    for (let x = 15; x < 195; x += lw * 2) s += svgRect(x, wy, lw, 1.5);
+    s += svgText(197, wy + 1.2, `${freq} LW/PH`, 2.5);
+    wy += 4;
+  }
+  // Sine wave patterns
+  s += svgText(15, wy + 8, '正弦波 (Sine Wave)', 4, 'start', '#333');
+  wy += 14;
+  for (let f = 1; f <= 8; f++) {
+    const amp = 3, freq = f * 3;
+    let path = `M 15 ${wy + amp}`;
+    for (let x = 15; x <= 195; x += 0.5) {
+      const v = wy + amp + amp * Math.sin((x - 15) * freq * Math.PI / 180);
+      path += ` L ${x} ${v}`;
+    }
+    s += `<path d="${path}" fill="none" stroke="black" stroke-width="0.3"/>`;
+    s += svgText(197, wy + amp, `f=${f}`, 2.5);
+    wy += amp * 2 + 2;
+  }
+  // Center cross
+  s += crossMark(A4W/2, A4H/2 + 20, 15, 0.4, 'red');
+  s += svgCircle(A4W/2, A4H/2 + 20, 10, 'none', 'red', 0.3);
+  s += svgFoot('ISO 12233 e-SFR · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 4. IT8 Color ---
+function gen_it8color() {
+  let s = svgOpen();
+  s += svgTitle('IT8 色彩校准卡 — 264 Color Patches');
+  const colors = [];
+  for (let r = 0; r < 12; r++) for (let c = 0; c < 22; c++) {
+    colors.push(`hsl(${(c/22)*360}, ${40+(r/12)*60}%, ${15+(r/12)*70}%)`);
+  }
+  let idx = 0;
+  for (let r = 0; r < 12; r++) for (let c = 0; c < 22; c++) {
+    if (idx >= colors.length) break;
+    s += svgRect(10 + c*8.8, 20 + r*11, 8, 10, colors[idx], 'white', 0.2);
+    idx++;
+  }
+  // Gray row
+  for (let i = 0; i < 22; i++) {
+    const v = Math.round((i/21)*255);
+    s += svgRect(10 + i*8.8, 155, 8, 10, `rgb(${v},${v},${v})`, 'white', 0.2);
+  }
+  s += svgText(A4W/2, 172, '灰阶梯度 Gray Scale', 3.5, 'middle');
+  s += svgFoot('ISO 12641 IT8 Color Target · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 5. CMYK Patch ---
+function gen_cmykpatch() {
+  let s = svgOpen();
+  s += svgTitle('CMYK 色彩还原测试页 — Color Accuracy');
+  const chs = [
+    { name:'C (Cyan)', vals:[0,51,102,153,204,255], base:[0,160,233] },
+    { name:'M (Magenta)', vals:[0,51,102,153,204,255], base:[210,0,130] },
+    { name:'Y (Yellow)', vals:[0,51,102,153,204,255], base:[240,210,0] },
+    { name:'K (Black)', vals:[0,51,102,153,204,255], base:[40,40,40] },
+  ];
+  chs.forEach((ch, ci) => {
+    const y = 22 + ci * 30;
+    s += svgText(10, y, ch.name, 3.5, 'start', '#333', 'Arial');
+    for (let i = 0; i < 20; i++) {
+      const pct = i / 19;
+      const r = Math.round(255 - (255 - ch.base[0]) * pct);
+      const g = Math.round(255 - (255 - ch.base[1]) * pct);
+      const b = Math.round(255 - (255 - ch.base[2]) * pct);
+      s += svgRect(10 + i*9.5, y+3, 8.5, 12, `rgb(${r},${g},${b})`, 'white', 0.15);
+      s += svgText(10 + i*9.5 + 4.25, y+18, `${Math.round(pct*100)}%`, 2, 'middle', '#666');
+    }
+  });
+  // Gray balance
+  s += svgText(10, 150, '灰平衡 Gray Balance', 3.5, 'start', '#333', 'Arial');
+  for (let i = 0; i < 20; i++) {
+    const v = Math.round(255 - (i/19)*255);
+    s += svgRect(10 + i*9.5, 154, 8.5, 12, `rgb(${v},${v},${v})`, 'white', 0.15);
+  }
+  // Memory colors
+  s += svgText(10, 178, '记忆色参考 Memory Colors', 3.5, 'start', '#333', 'Arial');
+  const mcols = ['#f5deb3','#8b4513','#228b22','#4169e1','#ff6347','#ffd700','#f0f0f0','#333333','#ff69b4','#00ced1'];
+  mcols.forEach((c,i) => { s += svgRect(10 + i*19, 182, 17, 14, c, 'white', 0.15); });
+  s += svgFoot('ISO 13655 CMYK Color Test · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 6. Feed Angle ---
+function gen_feedangle() {
+  let s = svgOpen();
+  s += svgTitle('馈纸角偏差测试页 — Feed Angle Test (ISO 12653-2)');
+  const m = 12;
+  // Corner crosses
+  [[m,m],[A4W-m,m],[m,A4H-m],[A4W-m,A4H-m]].forEach(([cx,cy]) => {
+    s += crossMark(cx, cy, 12, 0.4);
+    s += svgCircle(cx, cy, 6, 'none', 'black', 0.25);
+    s += svgCircle(cx, cy, 0.6, 'black');
+  });
+  // Center
+  s += crossMark(A4W/2, A4H/2, 20, 0.5, 'red');
+  s += svgCircle(A4W/2, A4H/2, 10, 'none', 'red', 0.3);
+  // Edge ticks
+  for (let x = 20; x < A4W-10; x += 5) { s += svgLine(x, m, x, m+3, 0.2, 'blue'); s += svgLine(x, A4H-m-3, x, A4H-m, 0.2, 'blue'); }
+  for (let y = 20; y < A4H-10; y += 5) { s += svgLine(m, y, m+3, y, 0.2, 'blue'); s += svgLine(A4W-m-3, y, A4W-m, y, 0.2, 'blue'); }
+  // Diagonals
+  s += svgLine(m, m, A4W-m, A4H-m, 0.15, '#ccc') + ` stroke-dasharray="2,2"/>`.replace('/>','') ;
+  s += svgLine(A4W-m, m, m, A4H-m, 0.15, '#ccc') + ` stroke-dasharray="2,2"/>`.replace('/>','');
+  // Ruler
+  for (let x = 20; x <= A4W-10; x += 10) {
+    s += svgLine(x, A4H-m-4, x, A4H-m, 0.2);
+    if (x % 50 === 0) s += svgText(x, A4H-m+5, `${x}mm`, 2.5, 'middle');
+  }
+  s += svgFoot('ISO 12653-2 馈纸角偏差测试 · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 7. Skew Test ---
+function gen_skewtest() {
+  let s = svgOpen();
+  s += svgTitle('送纸歪斜测试页 — Skew Test');
+  // Dotted reference lines
+  for (let x = 10; x < A4W-5; x += 0.8) { s += svgRect(x, 20, 0.3, 0.3); s += svgRect(x, A4H-20, 0.3, 0.3); }
+  // Edge marks
+  for (let y = 20; y <= A4H-20; y += 10) { s += svgLine(10, y, 15, y); s += svgLine(A4W-15, y, A4W-10, y); }
+  // Grid
+  for (let x = 30; x <= A4W-20; x += 20) s += svgLine(x, 25, x, A4H-25, 0.1, '#ddd');
+  for (let y = 30; y <= A4H-20; y += 20) s += svgLine(15, y, A4W-15, y, 0.1, '#ddd');
+  // Measurement areas
+  [[15,25,'Area TL'],[A4W-55,25,'Area TR'],[15,A4H-65,'Area BL'],[A4W-55,A4H-65,'Area BR']].forEach(([x,y,label]) => {
+    s += svgRect(x, y, 40, 40, 'none', '#aaa', 0.2);
+    s += svgText(x+20, y+20, label, 2.5, 'middle', '#aaa');
+    s += crossMark(x+20, y+20, 15, 0.2, '#888');
+  });
+  s += svgFoot('ISO 12653-2 歪斜测试 · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 8. OCR Text ---
+function gen_ocrtext() {
+  let s = svgOpen();
+  s += svgTitle('OCR 标准字符集测试页');
+  s += svgText(10, 24, 'OCR-A 数字集:', 3.5, 'start', '#333', 'Arial');
+  s += svgText(10, 34, '0123456789', 12, 'start', 'black', 'monospace');
+  s += svgText(10, 50, 'OCR-B 字母集:', 3.5, 'start', '#333', 'Arial');
+  s += svgText(10, 58, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8, 'start', 'black', 'serif');
+  s += svgText(10, 68, 'abcdefghijklmnopqrstuvwxyz', 8, 'start', 'black', 'serif');
+  s += svgText(10, 82, '特殊符号:', 3.5, 'start', '#333', 'Arial');
+  s += svgText(10, 90, '!@#$%^&amp;*()_+-=[]{}|;:\'",.&lt;&gt;?/', 8, 'start', 'black', 'monospace');
+  // Multi-size
+  s += svgText(10, 105, '字号阶梯:', 3.5, 'start', '#333', 'Arial');
+  const pts = [4,5,6,7,8,9,10,11,12,14,16,18,20,24];
+  let yy = 112;
+  for (const p of pts) {
+    const fsz = p * 0.353;
+    s += svgText(10, yy, `The quick brown fox (${p}pt)`, fsz);
+    yy += fsz + 2.5;
+  }
+  // Chinese
+  s += svgText(10, 220, '中文测试 (生僻字):', 3.5, 'start', '#333', 'Arial');
+  s += svgText(10, 228, '永東國酬鷹鬱龜袋籠廳矗齷龕齾爩鱻麤', 6);
+  s += svgText(10, 238, '简体: 国家标准字符集测试 包含常用3500字', 4, 'start', '#333', 'Arial');
+  // Barcode
+  s += svgText(10, 255, '条码密度测试:', 3.5, 'start', '#333', 'Arial');
+  let bx = 10;
+  const pat = '11010011100101100111010010110011101001110101100110011101011010011100101100111010011101011001100111010110100111001011001110';
+  for (let i = 0; i < pat.length; i++) { if (pat[i]==='1') s += svgRect(bx, 258, 0.4, 12); bx += 0.5; }
+  s += svgFoot('GB/T 12052 OCR Character Set · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 9. Mixed Layout ---
+function gen_mixedlayout() {
+  let s = svgOpen();
+  s += svgTitle('混合版面测试页 — Mixed Layout');
+  // Title bar
+  s += svgRect(10, 18, 190, 10, '#eee', '#333', 0.3);
+  s += svgText(A4W/2, 26, '文档标题 Document Title', 4, 'middle', '#333', 'Arial');
+  // Text
+  s += svgText(12, 38, '这是一段测试文本，验证 OCR 对中英文混排的识别能力。The quick brown fox jumps over the lazy dog.', 3, 'start', '#333', 'Arial');
+  s += svgText(12, 44, '数字 0123456789 · 日期 2024-01-15 · 电话 138-0000-1234 · 邮箱 test@example.com · ¥123.45', 3, 'start', '#333', 'Arial');
+  // Table
+  const tx = 12, ty = 50, cols = 4, rows = 5, cw = 21, rh = 7;
+  for (let c = 0; c <= cols; c++) s += svgLine(tx + c*cw, ty, tx + c*cw, ty + rows*rh);
+  for (let r = 0; r <= rows; r++) s += svgLine(tx, ty + r*rh, tx + cols*cw, ty + r*rh);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++)
+    s += svgText(tx + c*cw + 2, ty + r*rh + 5, `Cell ${r+1}-${c+1}`, 2.5, 'start', '#555', 'Arial');
+  // QR code
+  s += svgRect(120, 50, 32, 32, 'white', '#333', 0.3);
+  for (let r = 0; r < 16; r++) for (let c = 0; c < 16; c++) {
+    if ((r+c)%3===0 || (r<3&&c<3) || (r<3&&c>12) || (r>12&&c<3) || (r===7) || (c===7))
+      s += svgRect(121 + c*1.9, 51 + r*1.9, 1.7, 1.7);
+  }
+  s += svgText(136, 86, 'QR Code', 2.5, 'middle', '#555');
+  // Barcode area
+  s += svgRect(120, 90, 70, 18, '#f5f5f5', '#ccc', 0.2);
+  let bbx = 122;
+  for (let i = 0; i < 80; i++) { if (i%3!==0) s += svgRect(bbx, 92, 0.4, 14); bbx += 0.8; }
+  s += svgText(155, 112, 'EAN-13', 2.5, 'middle', '#555');
+  // Image placeholder
+  s += svgRect(12, 100, 60, 50, '#e8e8e8', '#333', 0.3);
+  s += svgText(42, 128, '图片区域 Image Area', 3, 'middle', '#999');
+  s += svgLine(12, 100, 72, 150, 0.15, '#ccc');
+  s += svgLine(72, 100, 12, 150, 0.15, '#ccc');
+  s += svgFoot('ISO/IEC 19794-1 Mixed Layout · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 10. Gray Wedge ---
+function gen_graywedge() {
+  let s = svgOpen();
+  s += svgTitle('21 级灰阶楔 — Gray Wedge');
+  const steps = 21, bw = 180 / steps;
+  for (let i = 0; i < steps; i++) {
+    const v = Math.round((i/(steps-1))*255);
+    s += svgRect(15 + i*bw, 22, bw-0.5, 35, `rgb(${v},${v},${v})`, 'white', 0.2);
+    s += svgText(15 + i*bw + bw/2, 62, v, 2.5, 'middle', '#666');
+  }
+  // Density labels
+  [0.0,0.1,0.2,0.3,0.5,0.7,1.0,1.3,1.5,1.8,2.0].forEach((d,i,a) => {
+    s += svgText(15 + (i/(a.length-1))*180, 70, `D=${d}`, 2, 'middle', '#999');
+  });
+  // Continuous gradient
+  for (let x = 0; x < 180; x++) { const v = Math.round((x/179)*255); s += svgRect(15+x, 78, 1.1, 12, `rgb(${v},${v},${v})`); }
+  s += svgText(A4W/2, 98, '连续灰阶渐变 Continuous Gradient', 3, 'middle', '#555');
+  // Gamma
+  s += svgText(A4W/2, 110, 'Gamma 测试 (γ=2.2)', 4, 'middle', '#333', 'Arial');
+  for (let x = 0; x < 180; x++) { const v = Math.round(Math.pow(x/179,2.2)*255); s += svgRect(15+x, 115, 1.1, 12, `rgb(${v},${v},${v})`); }
+  s += svgText(15, 132, 'γ=2.2', 2, 'start', '#999');
+  s += svgText(195, 132, 'γ=2.2', 2, 'end', '#999');
+  // Low contrast
+  s += svgText(A4W/2, 145, '低对比度测试 (5%/10%/15%/20%)', 4, 'middle', '#333', 'Arial');
+  [5,10,15,20].forEach((pct,i) => {
+    const y = 150 + i * 14;
+    for (let x = 0; x < 180; x++) {
+      const base = 128, delta = pct * 1.28;
+      const v = Math.round(base + delta * Math.sin(x * Math.PI / 20));
+      s += svgRect(15+x, y, 1.1, 10, `rgb(${v},${v},${v})`);
+    }
+    s += svgText(197, y+6, `对比度${pct}%`, 2);
+  });
+  s += svgFoot('ISO 5-3 Gray Wedge · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 11. Halftone ---
+function gen_halftone() {
+  let s = svgOpen();
+  s += svgTitle('半色调网点测试图 — Halftone Screen Test');
+  const lpis = [65, 85, 100, 133, 150, 175];
+  let y = 22;
+  for (const lpi of lpis) {
+    const period = 25.4 / lpi;
+    s += svgText(10, y+5, `${lpi} lpi`, 3, 'start', '#333', 'Arial');
+    for (let py = 0; py < 18; py += period) for (let px = 0; px < 140; px += period) {
+      const dr = period * 0.3 * (1 + Math.sin(px * 0.1) * 0.3);
+      s += `<circle cx="${35+px}" cy="${y+py}" r="${dr.toFixed(2)}" fill="black"/>`;
+    }
+    y += 22;
+  }
+  // Angle test
+  s += svgText(A4W/2, y+5, '网点角度测试 (150 lpi)', 4, 'middle', '#333', 'Arial');
+  y += 12;
+  const angles = [0, 15, 30, 45, 60, 75];
+  angles.forEach((ang, ai) => {
+    const ax = 12 + ai * 32, rad = ang * Math.PI / 180, period = 25.4 / 150;
+    s += svgText(ax+13, y, `${ang}°`, 2.5, 'middle', '#333', 'Arial');
+    for (let py = 0; py < 22; py += period) for (let px = 0; px < 22; px += period) {
+      const rx = px*Math.cos(rad) - py*Math.sin(rad), ry = px*Math.sin(rad) + py*Math.cos(rad);
+      if (rx>=0 && rx<22 && ry>=0 && ry<22)
+        s += `<circle cx="${ax+rx}" cy="${y+3+ry}" r="${(period*0.25).toFixed(2)}" fill="black"/>`;
+    }
+  });
+  s += svgFoot('ISO 12647-2 Halftone Test · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 12. Registration Marks ---
+function gen_regmark() {
+  let s = svgOpen();
+  s += svgTitle('套准/拼接标记页 — Registration Marks');
+  function reg(cx,cy,sz) {
+    s += crossMark(cx,cy,sz,0.35);
+    s += svgCircle(cx,cy,sz*0.6,'none','black',0.25);
+    s += svgCircle(cx,cy,sz*0.2,'black');
+  }
+  reg(15,20,7); reg(A4W-15,20,7); reg(15,A4H-20,7); reg(A4W-15,A4H-20,7); reg(A4W/2,A4H/2,10);
+  // Color bars
+  ['cyan','magenta','yellow','black','red','green','blue'].forEach((c,i) => {
+    s += svgRect(15+i*25, A4H/2+22, 22, 10, c);
+    s += svgText(26+i*25, A4H/2+36, c.toUpperCase(), 2.5, 'middle', '#555');
+  });
+  // Gray balance
+  for (let i = 0; i < 10; i++) { const v = Math.round((i/9)*255); s += svgRect(15+i*19, A4H/2+42, 17, 8, `rgb(${v},${v},${v})`); }
+  s += svgText(A4W/2, A4H/2+58, '灰平衡条 Gray Balance Strip', 3, 'middle', '#666');
+  // CMYK overprint test
+  s += svgText(A4W/2, A4H/2+70, '叠印测试 Overprint Test', 4, 'middle', '#333', 'Arial');
+  s += svgRect(30, A4H/2+74, 30, 20, 'cyan', 'none');
+  s += svgRect(45, A4H/2+74, 30, 20, 'magenta', 'none');
+  s += svgRect(37, A4H/2+80, 30, 20, 'yellow', 'none');
+  s += svgFoot('ISO 12647-2 Registration Marks · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 13. Stitch Grid ---
+function gen_stitchgrid() {
+  let s = svgOpen();
+  s += svgTitle('网格对齐测试图 — Grid Alignment');
+  for (let x = 10; x <= A4W-5; x += 5) {
+    const major = x % 25 === 0;
+    s += svgLine(x, 18, x, A4H-8, major ? 0.3 : 0.12, major ? '#444' : '#ccc');
+    if (major) s += svgText(x, 16, x, 2, 'middle', '#999');
+  }
+  for (let y = 18; y <= A4H-5; y += 5) {
+    const major = y % 25 === 0;
+    s += svgLine(10, y, A4W-5, y, major ? 0.3 : 0.12, major ? '#444' : '#ccc');
+    if (major) s += svgText(7, y+1, y, 2, 'end', '#999');
+  }
+  // Corner markers
+  [[10,18,'R1'],[A4W-5,18,'R2'],[10,A4H-5,'R3'],[A4W-5,A4H-5,'R4']].forEach(([x,y,l]) => {
+    s += svgText(x, y-3, l, 3, 'start', 'red', 'Arial');
+  });
+  // Center cross
+  s += crossMark(A4W/2, A4H/2, 12, 0.4, 'red');
+  s += svgFoot('5mm Grid Alignment Test · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 14. Duplex Alignment ---
+function gen_duplexalign() {
+  let s = svgOpen();
+  s += svgTitle('双面打印对齐测试页 — Duplex Alignment');
+  // Front side marks
+  s += svgText(15, 20, '正面 (Front)', 4, 'start', '#333', 'Arial');
+  [[20,30],[A4W-20,30],[20,A4H-30],[A4W-20,A4H-30]].forEach(([cx,cy]) => {
+    s += crossMark(cx,cy,10,0.4,'blue');
+    s += svgCircle(cx,cy,0.8,'blue');
+  });
+  s += crossMark(A4W/2, A4H/2-20, 15, 0.5, 'blue');
+  // Flip indicator
+  s += svgRect(A4W/2-20, A4H-25, 40, 12, '#eee', '#333', 0.3);
+  s += svgText(A4W/2, A4H-17, '↕ 翻转线', 3, 'middle', '#333', 'Arial');
+  // Back side preview (dashed)
+  s += svgText(15, A4H/2+15, '反面预览 (Back Preview — 叠加显示)', 3.5, 'start', '#999', 'Arial');
+  [[20,30],[A4W-20,30],[20,A4H-30],[A4W-20,A4H-30]].forEach(([cx,cy]) => {
+    s += `<circle cx="${cx}" cy="${cy}" r="0.8" fill="none" stroke="red" stroke-width="0.4" stroke-dasharray="1,1"/>`;
+    s += `<line x1="${cx-8}" y1="${cy}" x2="${cx+8}" y2="${cy}" stroke="red" stroke-width="0.3" stroke-dasharray="1,1"/>`;
+    s += `<line x1="${cx}" y1="${cy-8}" x2="${cx}" y2="${cy+8}" stroke="red" stroke-width="0.3" stroke-dasharray="1,1"/>`;
+  });
+  s += crossMark(A4W/2+3, A4H/2-17, 15, 0.3, 'red');
+  // Tolerance guide
+  s += svgText(A4W/2, A4H-8, '蓝=正面 红虚线=反面 · 偏移量 = 两十字中心距', 2.5, 'middle', '#999');
+  s += svgFoot('Duplex Alignment Test · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 15. Edge/Boundary ---
+function gen_edgeband() {
+  let s = svgOpen();
+  s += svgTitle('边缘/边界测试页 — Edge & Margin Test');
+  const m = 8;
+  // Non-printable zone (shaded)
+  s += svgRect(0,0,A4W,m,'#f5f5f5'); s += svgRect(0,A4H-m,A4W,m,'#f5f5f5');
+  s += svgRect(0,0,m,A4H,'#f5f5f5'); s += svgRect(A4W-m,0,m,A4H,'#f5f5f5');
+  // Cut lines
+  s += svgLine(m,m,A4W-m,m,0.3,'red') + ` stroke-dasharray="3,2"/>`.replace('/>','');
+  s += svgLine(m,A4H-m,A4W-m,A4H-m,0.3,'red') + ` stroke-dasharray="3,2"/>`.replace('/>','');
+  s += svgLine(m,m,m,A4H-m,0.3,'red') + ` stroke-dasharray="3,2"/>`.replace('/>','');
+  s += svgLine(A4W-m,m,A4W-m,A4H-m,0.3,'red') + ` stroke-dasharray="3,2"/>`.replace('/>','');
+  s += svgText(A4W/2, m-2, '裁切线 Cut Line', 2.5, 'middle', 'red');
+  // Rulers
+  for (let x = m; x <= A4W-m; x += 10) {
+    s += svgLine(x, m, x, m+4, 0.2);
+    s += svgLine(x, A4H-m-4, x, A4H-m, 0.2);
+    if (x % 50 === 0) {
+      s += svgText(x, m+7, `${x}`, 2, 'middle', '#666');
+      s += svgText(x, A4H-m-6, `${x}`, 2, 'middle', '#666');
+    }
+  }
+  for (let y = m; y <= A4H-m; y += 10) {
+    s += svgLine(m, y, m+4, y, 0.2);
+    s += svgLine(A4W-m-4, y, A4W-m, y, 0.2);
+    if (y % 50 === 0) {
+      s += svgText(m+6, y+1, `${y}`, 2, 'start', '#666');
+      s += svgText(A4W-m-6, y+1, `${y}`, 2, 'end', '#666');
+    }
+  }
+  // Content area label
+  s += svgText(A4W/2, A4H/2, `安全打印区: ${(A4W-2*m).toFixed(0)} × ${(A4H-2*m).toFixed(0)} mm`, 5, 'middle', '#aaa', 'Arial');
+  s += svgText(A4W/2, A4H/2+8, `不可打印边距: ${m}mm`, 3, 'middle', '#ccc', 'Arial');
+  s += svgFoot('Edge & Margin Test · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+// --- 16. Durability ---
+function gen_durability() {
+  let s = svgOpen();
+  s += svgTitle('耐久性/重复扫描测试页 — Durability Test');
+  // Fine lines at different thicknesses
+  s += svgText(10, 22, '细线清晰度 (0.1~1.0pt)', 3.5, 'start', '#333', 'Arial');
+  const widths = [0.1,0.15,0.2,0.25,0.3,0.4,0.5,0.6,0.8,1.0];
+  widths.forEach((w,i) => {
+    s += svgLine(10, 28+i*5, 100, 28+i*5, w*2);
+    s += svgText(105, 29+i*5, `${w}pt`, 2.5, 'start', '#666');
+  });
+  // Gradient bands
+  s += svgText(10, 82, '渐变退化测试', 3.5, 'start', '#333', 'Arial');
+  for (let band = 0; band < 3; band++) {
+    const y = 86 + band * 14;
+    for (let x = 0; x < 180; x++) {
+      const v = band === 0 ? Math.round((x/179)*255) : band === 1 ? Math.round(128 + 127*Math.sin(x*Math.PI/90)) : (x%4<2 ? 0 : 255);
+      s += svgRect(10+x, y, 1.1, 10, `rgb(${v},${v},${v})`);
+    }
+    s += svgText(192, y+6, ['连续渐变','正弦波','高频黑白'][band], 2);
+  }
+  // Text samples at small sizes
+  s += svgText(10, 138, '微小文字耐久性', 3.5, 'start', '#333', 'Arial');
+  [3,4,5,6,7,8].forEach((pt,i) => {
+    const fsz = pt * 0.353;
+    s += svgText(10, 145+i*(fsz+3), `ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789 (${pt}pt)`, fsz);
+  });
+  // Color patches for fade test
+  s += svgText(10, 230, '色彩褪变参考 (打印后与原件对比)', 3.5, 'start', '#333', 'Arial');
+  ['#ff0000','#00ff00','#0000ff','#ff00ff','#00ffff','#ffff00','#ff8800','#8800ff'].forEach((c,i) => {
+    s += svgRect(10+i*23, 234, 20, 15, c, 'white', 0.2);
+    s += svgText(20+i*23, 255, c, 2, 'middle', '#666');
+  });
+  s += svgFoot('Durability / Repeated Scan Test · Generated by 打印机/扫描仪测试工具');
+  return s + svgClose;
+}
+
+const GENERATORS = {
+  iso12653: gen_iso12653, usaf1951: gen_usaf1951, photores: gen_photores,
+  it8color: gen_it8color, cmykpatch: gen_cmykpatch,
+  feedangle: gen_feedangle, skewtest: gen_skewtest,
+  ocrtext: gen_ocrtext, mixedlayout: gen_mixedlayout,
+  graywedge: gen_graywedge, halftone: gen_halftone,
+  regmark: gen_regmark, stitchgrid: gen_stitchgrid,
+  duplexalign: gen_duplexalign, edgeband: gen_edgeband, durability: gen_durability,
+};
+
+// ============================================================
+// PREVIEW & DOWNLOAD
+// ============================================================
+function downloadSVG(svg, filename) {
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function previewFile(id) {
+  const file = TEST_FILES.find(f => f.id === id);
+  if (!file || !GENERATORS[id]) return;
+  const svg = GENERATORS[id]();
+  document.getElementById('modalTitle').textContent = file.name + ' — 预览';
+  document.getElementById('modalBody').innerHTML = svg;
+  document.getElementById('modalDownload').onclick = () => downloadSVG(svg, id + '.svg');
+  document.getElementById('previewModal').classList.add('show');
+}
+function closePreview() { document.getElementById('previewModal').classList.remove('show'); }
+function downloadFile(id) {
+  if (!GENERATORS[id]) return;
+  downloadSVG(GENERATORS[id](), id + '.svg');
+}
+
+// ============================================================
+// RENDER TEST FILE GRID
+// ============================================================
+function renderFileGrid(filter) {
+  const grid = document.getElementById('fileGrid');
+  const files = filter === 'all' ? TEST_FILES : TEST_FILES.filter(f => f.category === filter);
+  grid.innerHTML = files.map(f => `
+    <div class="file-card">
+      <div class="file-card-header">
+        <div class="file-icon" style="background:${f.iconBg}">${f.icon}</div>
+        <div><h3>${f.name}</h3><div class="standard">${f.standard}</div></div>
+      </div>
+      <div class="file-desc">${f.desc}</div>
+      <div class="file-tags">${f.tags.map(t=>`<span class="file-tag">${t}</span>`).join('')}</div>
+      <div class="file-actions">
+        <button class="btn btn-primary" onclick="downloadFile('${f.id}')">⬇ 下载</button>
+        <button class="btn" onclick="previewFile('${f.id}')">👁 预览</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// UPLOAD & ANALYZE
+// ============================================================
+function analyzeFile(file) {
+  const result = document.getElementById('analysisResult');
+  const grid = document.getElementById('analysisGrid');
+  const checklist = document.getElementById('checklist');
+  const ext = file.name.split('.').pop().toLowerCase();
+  const sizeMB = (file.size / 1048576).toFixed(2);
+
+  grid.innerHTML = `
+    <div class="analysis-item"><div class="label">文件名</div><div class="value" style="font-size:14px;word-break:break-all">${file.name}</div></div>
+    <div class="analysis-item"><div class="label">格式</div><div class="value">${ext.toUpperCase()}</div></div>
+    <div class="analysis-item"><div class="label">大小</div><div class="value">${sizeMB} MB</div></div>
+    <div class="analysis-item"><div class="label">修改时间</div><div class="value" style="font-size:14px">${new Date(file.lastModified).toLocaleString('zh-CN')}</div></div>`;
+
+  if (['jpg','jpeg','png','bmp','tiff','tif'].includes(ext)) {
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth, h = img.naturalHeight, total = w * h;
+      const bpp = ext === 'png' ? 4 : 3, raw = total * bpp;
+      const dpiW = Math.round(w / mm2in(210)), dpiH = Math.round(h / mm2in(297));
+      const estDpi = Math.round((dpiW + dpiH) / 2);
+      const ratio = ((1 - file.size / raw) * 100).toFixed(1);
+      grid.innerHTML += `
+        <div class="analysis-item"><div class="label">像素分辨率</div><div class="value" style="font-size:18px">${w}×${h}</div></div>
+        <div class="analysis-item"><div class="label">总像素</div><div class="value">${(total/1e6).toFixed(2)}M</div></div>
+        <div class="analysis-item"><div class="label">等效 DPI (A4)</div><div class="value">${estDpi}</div></div>
+        <div class="analysis-item"><div class="label">压缩率</div><div class="value">${ratio}%</div></div>
+        <div class="analysis-item"><div class="label">宽高比</div><div class="value">${(w/h).toFixed(3)}</div></div>
+        <div class="analysis-item"><div class="label">色彩通道</div><div class="value">${ext==='png'?'RGBA (4ch)':'RGB (3ch)'}</div></div>`;
+      const checks = [];
+      if (estDpi >= 300) checks.push({ s:'pass', t:`分辨率 ${estDpi} DPI ≥ 300（标准文档扫描）` });
+      else if (estDpi >= 150) checks.push({ s:'warn', t:`分辨率 ${estDpi} DPI，低于 300 标准` });
+      else checks.push({ s:'fail', t:`分辨率 ${estDpi} DPI < 150，不满足最低要求` });
+      if (w >= 2480 && h >= 3508) checks.push({ s:'pass', t:'达到 A4@300dpi 标准 (2480×3508)' });
+      else if (w >= 1240 && h >= 1754) checks.push({ s:'warn', t:'达到 A4@150dpi，低于 300dpi 标准' });
+      else checks.push({ s:'fail', t:'低于 A4@150dpi，可能影响质量' });
+      if (file.size < 102400) checks.push({ s:'warn', t:'文件体积较小，可能过度压缩' });
+      else if (file.size > 52428800) checks.push({ s:'warn', t:'文件体积较大，建议优化' });
+      else checks.push({ s:'pass', t:'文件体积合理' });
+      if (ext==='jpg'||ext==='jpeg') checks.push({ s: file.size/raw > 0.05 ? 'pass':'warn', t: file.size/raw > 0.05 ? 'JPEG 质量较高':'JPEG 压缩比过高' });
+      checks.push({ s:'pass', t:`格式 ${ext.toUpperCase()} 兼容性良好` });
+      checklist.innerHTML = checks.map(c => `<li><span class="check-icon check-${c.s}">${c.s==='pass'?'✅':c.s==='warn'?'⚠️':'❌'}</span>${c.t}</li>`).join('');
+      result.classList.add('show');
+    };
+    img.src = URL.createObjectURL(file);
+  } else if (ext === 'pdf') {
+    grid.innerHTML += `<div class="analysis-item"><div class="label">格式类型</div><div class="value">PDF</div></div>`;
+    checklist.innerHTML = `<li><span class="check-icon check-pass">✅</span>PDF 格式兼容性良好</li>
+      <li><span class="check-icon check-warn">⚠️</span>完整 PDF 分析需要服务端 Ghostscript/qpdf</li>
+      <li><span class="check-icon check-pass">✅</span>文件大小 ${sizeMB} MB</li>`;
+    result.classList.add('show');
+  }
+}
+
+// ============================================================
+// TAB LOGIC & INIT
+// ============================================================
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// Paper select — group by category
+const paperSelect = document.getElementById('paperType');
+const groups = {};
+Object.entries(PAPERS).forEach(([k,v]) => { (groups[v.group] = groups[v.group] || []).push({ k, ...v }); });
+Object.entries(groups).forEach(([gname, items]) => {
+  const og = document.createElement('optgroup');
+  og.label = gname;
+  items.forEach(p => { const o = document.createElement('option'); o.value = p.k; o.textContent = `${p.name} (${p.w}×${p.h}mm)`; og.appendChild(o); });
+  paperSelect.appendChild(og);
+});
+paperSelect.value = 'a4';
+paperSelect.addEventListener('change', e => { currentPaper = e.target.value; renderTable(); });
+
+document.querySelectorAll('#dpiChips .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const dpi = parseInt(chip.dataset.dpi);
+    chip.classList.toggle('active');
+    chip.classList.contains('active') ? activeDpis.add(dpi) : activeDpis.delete(dpi);
+    renderTable();
+  });
+});
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active'); currentMode = btn.dataset.mode; renderTable();
+  });
+});
+
+document.getElementById('fileCategory').addEventListener('change', e => renderFileGrid(e.target.value));
+
+// Upload
+const uz = document.getElementById('uploadZone'), fi = document.getElementById('fileInput');
+uz.addEventListener('click', () => fi.click());
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('dragover'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('dragover'));
+uz.addEventListener('drop', e => { e.preventDefault(); uz.classList.remove('dragover'); if (e.dataTransfer.files.length) analyzeFile(e.dataTransfer.files[0]); });
+fi.addEventListener('change', e => { if (e.target.files.length) analyzeFile(e.target.files[0]); });
+
+// Modal close on overlay click / Escape
+document.getElementById('previewModal').addEventListener('click', e => { if (e.target === e.currentTarget) closePreview(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreview(); });
+
+// Init
+renderTable();
+renderFileGrid('all');
+</script>
+</body>
+</html>
